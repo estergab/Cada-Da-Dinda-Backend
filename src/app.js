@@ -13,20 +13,23 @@ const app = express();
 // Conectar ao banco
 connectDB();
 
-// ✅ CORS CORRIGIDO - permite localhost e produção
+// ✅ CORS CORRIGIDO - permite localhost e produção Vercel
 const allowedOrigins = [
-  'http://localhost:8080',           // Desenvolvimento local
-  'http://localhost:5173',           // Vite padrão
-  'https://casadadinda-frontend.vercel.app',  // ⚠️ SUBSTITUA pela sua URL do Vercel
-  process.env.FRONTEND_URL           // Variável de ambiente (opcional)
+  'http://localhost:8080',                          // Desenvolvimento local (Vite)
+  'http://localhost:5173',                          // Vite padrão alternativo
+  'https://casa-da-dinda-front.vercel.app',         // ✅ Produção Vercel (SEU DOMÍNIO)
+  'https://casa-da-dinda-front-64bfscfyg-esters-projects-48d5751d.vercel.app', // ✅ Deploy preview
+  process.env.FRONTEND_URL                          // Variável de ambiente (opcional)
 ].filter(Boolean); // Remove undefined
 
 app.use(cors({
   origin: function (origin, callback) {
-    // Permite requests sem origin (mobile apps, curl, postman)
+    // Permite requests sem origin (mobile apps, curl, postman, Render)
     if (!origin) return callback(null, true);
     
-    if (allowedOrigins.indexOf(origin) !== -1) {
+    // Permite se estiver na lista OU se terminar com .vercel.app
+    if (allowedOrigins.indexOf(origin) !== -1 || origin.endsWith('.vercel.app')) {
+      console.log('✅ Origem permitida pelo CORS:', origin);
       callback(null, true);
     } else {
       console.log('❌ Origem bloqueada pelo CORS:', origin);
@@ -42,13 +45,14 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Servir arquivos estáticos (imagens)
+// Servir arquivos estáticos (imagens de uploads)
 app.use('/uploads', express.static(path.join(__dirname, '../uploads')));
 
-// ✅ Rota de health check (para monitoramento)
+// ✅ Rota de health check (para monitoramento Render)
 app.get('/health', (req, res) => {
-  res.status(200).json({ 
-    status: 'OK', 
+  res.status(200).json({
+    status: 'OK',
+    message: 'Casa da Dinda API está rodando',
     timestamp: new Date().toISOString(),
     uptime: process.uptime()
   });
@@ -56,12 +60,14 @@ app.get('/health', (req, res) => {
 
 // Rota raiz
 app.get('/', (req, res) => {
-  res.json({ 
-    message: 'Casa da Dinda API',
+  res.json({
+    message: '🏠 Casa da Dinda API',
     version: '1.0.0',
+    status: 'Online',
     endpoints: {
       lares: '/api/lares',
-      solicitacoes: '/api/solicitacoes'
+      solicitacoes: '/api/solicitacoes',
+      health: '/health'
     }
   });
 });
@@ -70,7 +76,8 @@ app.get('/', (req, res) => {
 app.use('/api/lares', laresRoutes);
 app.use('/api/solicitacoes', solicitacoesRoutes);
 
-// Middleware de erro
+// Middleware de tratamento de erros (deve ser o último)
 app.use(errorHandler);
 
 module.exports = app;
+
